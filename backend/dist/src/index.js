@@ -1,16 +1,23 @@
-import express from 'express';
-import { authRouter } from './routes/auth.route.js';
-import { messageRouter } from './routes/message.route.js';
-import cookieParser from 'cookie-parser';
+import express from "express";
+import cookieParser from "cookie-parser";
+import path from "path";
+import { authRouter } from "./routes/auth.route.js";
+import { messageRouter } from "./routes/message.route.js";
 import dotenv from "dotenv";
-import cors from 'cors';
+import { app, server } from "./socket/socket.js";
 dotenv.config();
-const app = express();
-app.use(cors({ origin: 'http://localhost:5173' }));
-app.use(cookieParser());
-app.use(express.json());
+const PORT = process.env.PORT || 5001;
+const __dirname = path.resolve();
+app.use(cookieParser()); // for parsing cookies
+app.use(express.json()); // for parsing application/json
 app.use("/api/auth", authRouter);
 app.use("/api/messages", messageRouter);
-app.listen(3000, () => {
-    console.log("Server listening on  Port 3000!");
+if (process.env.NODE_ENV !== "development") {
+    app.use(express.static(path.join(__dirname, "/frontend/dist")));
+    app.get("*", (req, res) => {
+        res.sendFile(path.join(__dirname, "frontend", "dist", "index.html"));
+    });
+}
+server.listen(PORT, () => {
+    console.log("Server is running on port " + PORT);
 });

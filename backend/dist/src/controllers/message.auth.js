@@ -1,4 +1,5 @@
 import prisma from "../db/prisma.js";
+import { getReceiverSocketId, io } from "../socket/socket.js";
 export const sendMessage = async (req, res) => {
     try {
         const { message } = req.body;
@@ -43,10 +44,10 @@ export const sendMessage = async (req, res) => {
             });
         }
         // Socket io will go here
-        // const receiverSocketId = getReceiverSocketId(receiverId);
-        // if (receiverSocketId) {
-        // 	io.to(receiverSocketId).emit("newMessage", newMessage);
-        // }
+        const receiverSocketId = getReceiverSocketId(receiverId);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("newMessage", newMessage);
+        }
         res.status(201).json(newMessage);
     }
     catch (error) {
@@ -56,24 +57,24 @@ export const sendMessage = async (req, res) => {
 };
 export const getMessages = async (req, res) => {
     try {
-        const { id: userTOChatId } = req.params;
+        const { id: userToChatId } = req.params;
         const senderId = req.user.id;
         const conversation = await prisma.conversation.findFirst({
             where: {
                 participantIds: {
-                    hasEvery: [senderId, userTOChatId]
-                }
+                    hasEvery: [senderId, userToChatId],
+                },
             },
             include: {
                 messages: {
                     orderBy: {
-                        createdAt: "asc"
-                    }
-                }
-            }
+                        createdAt: "asc",
+                    },
+                },
+            },
         });
         if (!conversation) {
-            return res.status(200).json({ message: [] });
+            return res.status(200).json([]);
         }
         res.status(200).json(conversation.messages);
     }
@@ -88,20 +89,19 @@ export const getUsersForSidebar = async (req, res) => {
         const users = await prisma.user.findMany({
             where: {
                 id: {
-                    not: authUserId
-                }
+                    not: authUserId,
+                },
             },
             select: {
                 id: true,
-                username: true,
                 fullname: true,
-                profilePic: true
-            }
+                profilePic: true,
+            },
         });
         res.status(200).json(users);
     }
     catch (error) {
-        console.error("Error in conversation: ", error.message);
+        console.error("Error in getUsersForSidebar: ", error.message);
         res.status(500).json({ error: "Internal server error" });
     }
 };
